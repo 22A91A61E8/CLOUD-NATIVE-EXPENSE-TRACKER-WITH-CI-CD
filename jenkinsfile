@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main', credentialsId: 'github-ssh-key', url: 'https://github.com/22A91A61E8/CLOUD-NATIVE-EXPENSE-TRACKER-WITH-CI-CD.git'
+                git branch: 'main', credentialsId: 'github-ssh-key', url: 'git@github.com:22A91A61E8/CLOUD-NATIVE-EXPENSE-TRACKER-WITH-CI-CD.git'
                 // IMPORTANT: Replace the URL above with the SSH URL of YOUR repository if it's different.
                 // It should be 'git@github.com:<your-username>/<your-repo-name>.git'
             }
