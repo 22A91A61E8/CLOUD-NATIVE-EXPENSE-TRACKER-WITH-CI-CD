@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import "tailwindcss";
+
+*{
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255, 239, 208) transparent;
+}
+
+@theme{
+  --font-display:"Poppins","sans-serif";
+  --breakpoint-3xl:1920px;
+  --color-primary:#FF7415;
+}
+@layer base{
+html{
+  font-family: var(--font-display);
+}
+body{
+  background-color: #fcfbfc;
+  overflow-x: hidden;
+}
+}
+.input-box{
+  @apply w-full flex justify-between gap-3 text-sm text-black bg-slate-100 rounded px-4 py-3 mb-4  mt-3  border-slate-200 outline-none; 
+}
+.btn-primary{
+  @apply cursor-pointer w-full text-sm font-medium text-white bg-orange-500 shadow-lg shadow-orange-600/5 p-[10px] rounded-md my-1 hover:bg-orange-600/15 hover:text-orange-600;
+}
+
+.card{
+@apply bg-white p-6 rounded-2xl shadow-md shadow-gray-100 border border-gray-200/50; 
+}
+.card-btn{
+  @apply flex items-center gap-3 text-[12px] font-medium  text-gray-700 hover:text-orange-500 bg-gray-50 hover:bg-orange-50 px-4 py-1.5 rounded-lg border border-gray-200/50 cursor-pointer
+}
+
+.add-btn{
+  @apply flex items-center gap-1.5 text-xs md:text-sm font-medium text-orange-600 whitespace-nowrap  bg-orange-50 border border-orange-100 rounded-lg px-4 py-2 cursor-pointer;
+}
+
+.add-btn-fill{
+  @apply text-white bg-primary;
+}
+
+
+
+
+/* chatbot */
+
+
+@layer components{
+ .box {
+  @apply bg-white rounded-lg shadow-lg w-[90vw] md:w-[25vw] h-[70vh] absolute bottom-3 right-3 md:right-12 flex flex-col;
+}
+
+  .msg-body{
+    @apply flex flex-col h-[80%] overflow-x-hidden overflow-y-scroll   gap-4 py-6 px-6 
+  }
+  .bot-msg{
+    @apply h-auto min-w-auto max-w-[80%] bg-orange-200 text-black rounded-bl-none rounded-md p-4 self-start  break-words whitespace-pre-line
+  }
+  .user-msg{
+    @apply h-auto min-w-auto max-w-[80%] bg-amber-600 rounded-br-none rounded-md p-4  text-white self-end break-words whitespace-pre-line
+  }
+  .material-round{
+    @apply rounded-full  bg-orange-700 w-[8%] h-[50%] flex justify-center items-center
+  }
+  .footer{
+    @apply h-[10%] w-full p-3 flex  items-center absolute bottom-0
+  }
+  .chat-form{
+    @apply w-[100%]  rounded-full h-[100%] flex items-center outline-1 
+  }
+  .input-box{
+    @apply outline-0 border-0 w-[100%] indent-4 font-sans text-xl
+  }
+ 
+
+}
