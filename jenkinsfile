@@ -20,14 +20,14 @@ pipeline {
             }
         }
 
-        stage('Build Backend Docker Image') {
+       /* stage('Build Backend Docker Image') {
             steps {
                 script {
                     // Temporarily run as root for docker commands to bypass permission issues
                     sh "docker exec -u 0 \$(hostname) docker build -t ${DOCKER_HUB_USERNAME}/expense-tracker-backend:${APP_VERSION} ./Backend"
                 }
             }
-        }
+        }*/
         stage('Push Backend Docker Image') {
             steps {
                 script {
@@ -40,7 +40,7 @@ pipeline {
             }
         }
 
-        stage('Build Frontend Docker Image') {
+        /*stage('Build Frontend Docker Image') {
             steps {
                 script {
                     // Temporarily run as root for docker commands to bypass permission issues
@@ -48,7 +48,7 @@ pipeline {
                     sh "docker exec -u 0 \$(hostname) docker build -t ${DOCKER_HUB_USERNAME}/expense-tracker-frontend:${APP_VERSION} ./Frontend"
                 }
             }
-        }
+        }*/
 
         stage('Push Frontend Docker Image') {
             steps {
