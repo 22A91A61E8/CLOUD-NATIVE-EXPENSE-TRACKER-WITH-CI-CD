@@ -1,0 +1,53 @@
+# expense-tracker/kubernetes/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-tracker-frontend # Name of the frontend deployment
+  namespace: expense-tracker    # Must match the namespace defined in namespace.yaml
+  labels:
+    app: expense-tracker-frontend
+spec:
+  replicas: 2 # Number of frontend application instances (pods) to run. Adjust as needed.
+  selector:
+    matchLabels:
+      app: expense-tracker-frontend
+  template:
+    metadata:
+      labels:
+        app: expense-tracker-frontend
+    spec:
+      containers:
+      - name: frontend # Name of the container within the pod. Used by 'kubectl set image'.
+        image: sanjanasingineedi/expense-tracker-frontend:1.0.0 # Jenkins will dynamically update this tag (e.g., with BUILD_NUMBER)
+        ports:
+        - containerPort: 80 # The port Nginx listens on inside the container (standard HTTP)
+        env: # Define environment variables required by your frontend application
+        - name: REACT_APP_BACKEND_API_URL
+          # This URL uses Kubernetes' internal DNS to point to your backend service.
+          # Format: http://<service-name>.<namespace>.svc.cluster.local:<service-port>
+          value: "http://expense-tracker-backend-service.expense-tracker.svc.cluster.local:5000"
+        # Resource limits and requests are highly recommended for production environments:
+        # resources:
+        #   requests:
+        #     memory: "64Mi"
+        #     cpu: "50m"
+        #   limits:
+        #     memory: "128Mi"
+        #     cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-tracker-frontend-service # Name of the Kubernetes service for the frontend
+  namespace: expense-tracker          # Must be in the same namespace as the deployment
+spec:
+  selector:
+    app: expense-tracker-frontend # Selects pods with this label to expose via the service
+  ports:
+  - protocol: TCP
+    port: 80 # The port that users will access (e.g., in a web browser)
+    targetPort: 80 # The port on the actual pods/containers that traffic is forwarded to
+  type: LoadBalancer # Exposes your service externally using a cloud provider's load balancer.
+                     # If your Kubernetes cluster doesn't support LoadBalancer (e.g., Minikube without MetalLB),
+                     # change this to 'NodePort' and add a 'nodePort' field (e.g., nodePort: 30080).
+  # nodePort: 30080 # Example for NodePort type. Choose an available port in the 30000-32767 range.

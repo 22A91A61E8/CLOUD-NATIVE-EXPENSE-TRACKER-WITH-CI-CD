@@ -1,0 +1,51 @@
+# expense-tracker/kubernetes/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-tracker-backend # Name of the backend deployment
+  namespace: expense-tracker   # Must match the namespace defined in namespace.yaml
+  labels:
+    app: expense-tracker-backend
+spec:
+  replicas: 2 # Number of backend application instances (pods) to run. Adjust as needed.
+  selector:
+    matchLabels:
+      app: expense-tracker-backend
+  template:
+    metadata:
+      labels:
+        app: expense-tracker-backend
+    spec:
+      containers:
+      - name: backend # Name of the container within the pod. Used by 'kubectl set image'.
+        image:sanjanasingineedi/expense-tracker-backend:1.0.0 # Replace '22a91a61e8' with your Docker Hub username
+        ports:
+        - containerPort: 5000 # The port your Node.js backend application listens on inside the container
+        env: # Define environment variables required by your backend application
+        - name: DATABASE_URL
+          value: "mongodb+srv://ram:projectET@expensetracker.h3xvu5s.mongodb.net/?retryWrites=true&w=majority&appName=expenseTracker" # IMPORTANT: Replace with your actual database connection string
+        # Add other environment variables your backend needs (e.g., JWT_SECRET, API_KEYS)
+        # - name: JWT_SECRET
+        #   value: "your_jwt_secret_key_here"
+        # Resource limits and requests are highly recommended for production environments:
+        # resources:
+        #   requests:
+        #     memory: "128Mi"
+        #     cpu: "100m"
+        #   limits:
+        #     memory: "256Mi"
+        #     cpu: "200m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: expense-tracker-backend-service # Name of the Kubernetes service for the backend
+  namespace: expense-tracker         # Must be in the same namespace as the deployment
+spec:
+  selector:
+    app: expense-tracker-backend # Selects pods with this label to expose via the service
+  ports:
+  - protocol: TCP
+    port: 5000 # The port that this service will listen on within the cluster
+    targetPort: 5000 # The port on the actual pods/containers that traffic is forwarded to
+  type: ClusterIP # Exposes the service only within the Kubernetes cluster

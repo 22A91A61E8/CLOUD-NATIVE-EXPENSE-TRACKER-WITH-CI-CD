@@ -1,0 +1,5 @@
+# expense-tracker/kubernetes/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: expense-tracker # This is the namespace name that will be used for your deployments and services
