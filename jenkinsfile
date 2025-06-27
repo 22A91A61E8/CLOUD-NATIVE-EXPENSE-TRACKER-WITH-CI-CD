@@ -1,80 +1,178 @@
-// Jenkinsfile for CLOUD-NATIVE-EXPENSE-TRACKER-WITH-CI-CD
+// Jenkinsfile at the root of your expense-tracker repository
+
 pipeline {
+    // Defines where the pipeline will run.
+    // 'agent any' means Jenkins can run on any available agent (including the master container in this setup).
+    // If you set up a dedicated Jenkins agent later, you can revert to 'agent { label 'your-agent-label' }'
     agent any
 
+    // Environment variables accessible throughout the pipeline
     environment {
-        // Define your Docker Hub username
-        DOCKER_HUB_USERNAME = 'sanjanasingineedi'
-        // Define your application versions (can be dynamic later)
-        APP_VERSION = '1.0.0'
-        // Define your Kubernetes context name if you use one (optional)
-        // KUBECONFIG_CONTEXT = 'your-k8s-context'
+        DOCKER_HUB_USERNAME = 'sanjanasingineedi' // Your confirmed Docker Hub username
+        FRONTEND_IMAGE_NAME = "expense-tracker-frontend"
+        BACKEND_IMAGE_NAME = "expense-tracker-backend"
+        KUBERNETES_NAMESPACE = "expense-tracker" // Must match the namespace in your K8s YAMLs
+        KUBERNETES_CONFIG_PATH = "/home/jenkins/.kube/config" // Path to kubectl config INSIDE the Jenkins container
     }
 
     stages {
+        // Stage 1: Checkout Code
+        // This is implicitly handled by Jenkins SCM configuration, but explicit definition
+        // is good practice for clarity in complex pipelines.
         stage('Checkout Code') {
             steps {
-                git branch: 'main', credentialsId: 'github-ssh-key', url: 'git@github.com:22A91A61E8/CLOUD-NATIVE-EXPENSE-TRACKER-WITH-CI-CD.git'
-                // IMPORTANT: Replace the URL above with the SSH URL of YOUR repository if it's different.
-                // It should be 'git@github.com:<your-username>/<your-repo-name>.git'
+                script {
+                    echo "Checking out code from Git branch: main"
+                    // 'checkout scm' checks out the code configured in the Jenkins job's SCM settings.
+                    // This will pull from the 'main' branch as configured in the Jenkins job.
+                    checkout scm
+                }
             }
         }
 
-       /* stage('Build Backend Docker Image') {
+        // Stage 2: Backend Build & Test
+        stage('Backend Build & Test') {
             steps {
-                script {
-                    // Temporarily run as root for docker commands to bypass permission issues
-                    sh "docker exec -u 0 \$(hostname) docker build -t ${DOCKER_HUB_USERNAME}/expense-tracker-backend:${APP_VERSION} ./Backend"
+                dir('backend') { // Navigate into the backend directory
+                    echo "Building and testing backend..."
+                    sh 'npm install' // Install Node.js dependencies
+                    // IMPORTANT: Ensure you have a 'test' script in your backend package.json
+                    // (e.g., "test": "jest" or a simple "echo 'No tests defined'").
+                    sh 'npm test'   // Run backend tests
                 }
             }
-        }*/
-        stage('Push Backend Docker Image') {
+        }
+
+        // Stage 3: Frontend Build & Test
+        stage('Frontend Build & Test') {
+            steps {
+                dir('frontend') { // Navigate into the frontend directory
+                    echo "Building and testing frontend..."
+                    sh 'npm install' // Install Node.js dependencies
+                    // IMPORTANT: Ensure you have a 'test' script in your frontend package.json
+                    sh 'npm test'   // Run frontend tests
+                    // Build frontend for production (Vite typically creates a 'dist' folder)
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        // NEW STAGE: Install kubectl (required for Jenkins to interact with Kubernetes)
+        stage('Install kubectl') {
             steps {
                 script {
-                    // Login to Docker Hub using the credentials configured in Jenkins
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
-                        sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
-                        sh "docker push ${DOCKER_HUB_USERNAME}/expense-tracker-backend:${APP_VERSION}"
+                    echo "Installing kubectl inside the Jenkins container..."
+                    // These commands are for Debian/Ubuntu, which the jenkins:lts image is based on.
+                    // We install kubectl and then verify it.
+                    sh '''
+                        apt update -y
+                        apt install -y apt-transport-https ca-certificates curl
+                        curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
+                        echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+                        apt update -y
+                        apt install -y kubectl
+                        kubectl version --client # Verify kubectl installation
+                    '''
+                }
+            }
+        }
+
+        // Stage 4: Docker Build - Backend
+        stage('Docker Build - Backend') {
+            steps {
+                dir('backend') {
+                    echo "Building Docker image for backend..."
+                    script {
+                        // Tag image with Jenkins BUILD_NUMBER for unique versioning
+                        def backendImageTag = "${env.DOCKER_HUB_USERNAME}/${env.BACKEND_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                        sh "docker build -t ${backendImageTag} ."
+                        // Also tag with 'latest' for convenience (useful for consistent pulls)
+                        sh "docker tag ${backendImageTag} ${env.DOCKER_HUB_USERNAME}/${env.BACKEND_IMAGE_NAME}:latest"
                     }
                 }
             }
         }
 
-        /*stage('Build Frontend Docker Image') {
+        // Stage 5: Docker Build - Frontend
+        stage('Docker Build - Frontend') {
             steps {
-                script {
-                    // Temporarily run as root for docker commands to bypass permission issues
-                    //sh "docker exec -u 0 $(hostname) docker build -t ${DOCKER_HUB_USERNAME}/expense-tracker-frontend:${APP_VERSION} ./Frontend"
-                    sh "docker exec -u 0 \$(hostname) docker build -t ${DOCKER_HUB_USERNAME}/expense-tracker-frontend:${APP_VERSION} ./Frontend"
-                }
-            }
-        }*/
-
-        stage('Push Frontend Docker Image') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
-                        sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
-                        sh "docker push ${DOCKER_HUB_USERNAME}/expense-tracker-frontend:${APP_VERSION}"
+                dir('frontend') {
+                    echo "Building Docker image for frontend..."
+                    script {
+                        def frontendImageTag = "${env.DOCKER_HUB_USERNAME}/${env.FRONTEND_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                        sh "docker build -t ${frontendImageTag} ."
+                        sh "docker tag ${frontendImageTag} ${env.DOCKER_HUB_USERNAME}/${env.FRONTEND_IMAGE_NAME}:latest"
                     }
                 }
             }
         }
 
+        // Stage 6: Docker Push to Docker Hub
+        stage('Docker Push') {
+            steps {
+                script {
+                    echo "Logging into Docker Hub and pushing images..."
+                    // Use Jenkins Credentials to securely access Docker Hub.
+                    // The 'docker-hub-credentials' ID MUST match the ID of the credential you create in Jenkins.
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USERNAME')]) {
+                        sh "echo $DOCKER_HUB_PASSWORD | docker login -u $DOCKER_HUB_USERNAME --password-stdin"
+                        // Push backend images with both tags
+                        sh "docker push ${env.DOCKER_HUB_USERNAME}/${env.BACKEND_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                        sh "docker push ${env.DOCKER_HUB_USERNAME}/${env.BACKEND_IMAGE_NAME}:latest"
+                        // Push frontend images with both tags
+                        sh "docker push ${env.DOCKER_HUB_USERNAME}/${env.FRONTEND_IMAGE_NAME}:${env.BUILD_NUMBER}"
+                        sh "docker push ${env.DOCKER_HUB_USERNAME}/${env.FRONTEND_IMAGE_NAME}:latest"
+                    }
+                    echo "Docker images pushed successfully to Docker Hub."
+                }
+            }
+        }
+
+        // Stage 7: Deploy to Kubernetes
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Apply Backend Kubernetes Manifests
-                    sh "kubectl apply -f ./Backend/backend-deployment.yaml"
-                    sh "kubectl apply -f ./Backend/backend-service.yaml"
-                    echo "Backend deployed."
+                    echo "Applying Kubernetes namespace..."
+                    dir('kubernetes') {
+                        // Ensure the namespace exists before deploying resources into it.
+                        sh "kubectl apply -f namespace.yaml"
+                    }
 
-                    // Apply Frontend Kubernetes Manifests
-                    sh "kubectl apply -f ./Frontend/frontend-deployment.yaml"
-                    sh "kubectl apply -f ./Frontend/frontend-service.yaml"
-                    echo "Frontend deployed."
+                    echo "Deploying backend to Kubernetes..."
+                    // Update the backend deployment to use the new Docker image tagged with the current build number.
+                    // 'deployment/expense-tracker-backend' matches the name in backend-deployment.yaml.
+                    // 'backend=' matches the 'name' of the container within the deployment's spec.
+                    sh "kubectl set image deployment/expense-tracker-backend backend=${env.DOCKER_HUB_USERNAME}/${env.BACKEND_IMAGE_NAME}:${env.BUILD_NUMBER} -n ${env.KUBERNETES_NAMESPACE}"
+
+                    echo "Deploying frontend to Kubernetes..."
+                    // Update the frontend deployment to use the new Docker image.
+                    sh "kubectl set image deployment/expense-tracker-frontend frontend=${env.DOCKER_HUB_USERNAME}/${env.FRONTEND_IMAGE_NAME}:${env.BUILD_NUMBER} -n ${env.KUBERNETES_NAMESPACE}"
+
+                    echo "Kubernetes deployment initiated successfully. Performing rolling update."
+                    // Optional: Wait for the Kubernetes rollout to complete. Useful to ensure stability before next steps.
+                    // sh "kubectl rollout status deployment/expense-tracker-backend -n ${env.KUBERNETES_NAMESPACE}"
+                    // sh "kubectl rollout status deployment/expense-tracker-frontend -n ${env.KUBERNETES_NAMESPACE}"
                 }
             }
         }
     }
+
+    // Post-build actions (e.g., notifications based on pipeline outcome)
+    post {
+        always {
+            echo "Pipeline finished."
+        }
+        success {
+            echo "Pipeline succeeded! Application deployed to Kubernetes."
+            // Add notification steps here (e.g., Slack, email, Microsoft Teams)
+        }
+        failure {
+            echo "Pipeline failed! Please check the console output for errors."
+            // Add failure notification steps here
+        }
+        unstable {
+            echo "Pipeline is unstable (e.g., some tests failed but build succeeded)."
+        }
+    }
 }
+
