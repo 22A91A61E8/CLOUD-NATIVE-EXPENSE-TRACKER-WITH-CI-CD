@@ -1,20 +1,18 @@
-import React from 'react'
-import {BrowserRouter as Router,Routes,Route,Navigate} from "react-router-dom"
+import { useEffect, useRef, useState } from 'react'
+import { Toaster } from 'react-hot-toast'
+import { GoHubot } from "react-icons/go"
+import { SlArrowDown } from "react-icons/sl"
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom"
+import OtpVerification from './components/Auth/OtpVerification'
+import ChatMessage from './components/ChatMessage'
+import Footer from './components/Footer'
+import { Myinfo } from './components/Myinfo'
+import UserProvider from './context/UserContext'
 import Login from './pages/Auth/Login'
 import Signup from './pages/Auth/Signup'
-import { useRef, useState, useEffect } from 'react'
+import Expense from './pages/Dashboard/Expense'
 import Home from './pages/Dashboard/Home'
 import Income from './pages/Dashboard/Income'
-import Expense from './pages/Dashboard/Expense'
-import UserProvider from './context/UserContext'
-import { Toaster } from 'react-hot-toast'
-  import { Myinfo } from './components/Myinfo';
-    import Footer from './components/Footer';
-import ChatMessage from './components/ChatMessage';
- import Header from './Components/Header';
-import { SlArrowDown } from "react-icons/sl";
-  import { GoHubot } from "react-icons/go";
-import OtpVerification from './components/Auth/OtpVerification'
 const App = () => {
 
 const chatBodyref= useRef();

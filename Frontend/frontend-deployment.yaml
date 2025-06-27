@@ -1,0 +1,27 @@
+
+
+# frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: expense-tracker-frontend-deployment
+  labels:
+    app: expense-tracker-frontend
+spec:
+  replicas: 1 # You can change this
+  selector:
+    matchLabels:
+      app: expense-tracker-frontend
+  template:
+    metadata:
+      labels:
+        app: expense-tracker-frontend
+    spec:
+      containers:
+      - name: expense-tracker-frontend
+        image: sanjanasingineedi/expense-tracker-frontend:1.0.0 # Make sure this matches your Docker Hub image
+        ports:
+        - containerPort: 3000 # Assuming your React app runs on 3000 inside the container (default for create-react-app)
+        # env: # Optional: If your frontend needs to know the backend URL
+        #   - name: REACT_APP_BACKEND_URL # Or whatever env var your frontend uses
+        #     value: "http://expense-tracker-backend-service:8080" # This is the internal Kubernetes service name and port

@@ -1,0 +1,78 @@
+// Jenkinsfile for CLOUD-NATIVE-EXPENSE-TRACKER-WITH-CI-CD
+pipeline {
+    agent any
+
+    environment {
+        // Define your Docker Hub username
+        DOCKER_HUB_USERNAME = 'sanjanasingineedi'
+        // Define your application versions (can be dynamic later)
+        APP_VERSION = '1.0.0'
+        // Define your Kubernetes context name if you use one (optional)
+        // KUBECONFIG_CONTEXT = 'your-k8s-context'
+    }
+
+    stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', credentialsId: 'github-ssh-key', url: 'https://github.com/22A91A61E8/CLOUD-NATIVE-EXPENSE-TRACKER-WITH-CI-CD.git'
+                // IMPORTANT: Replace the URL above with the SSH URL of YOUR repository if it's different.
+                // It should be 'git@github.com:<your-username>/<your-repo-name>.git'
+            }
+        }
+
+        stage('Build Backend Docker Image') {
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_HUB_USERNAME}/expense-tracker-backend:${APP_VERSION} ./Backend"
+                }
+            }
+        }
+
+        stage('Push Backend Docker Image') {
+            steps {
+                script {
+                    // Login to Docker Hub using the credentials configured in Jenkins
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
+                        sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
+                        sh "docker push ${DOCKER_HUB_USERNAME}/expense-tracker-backend:${APP_VERSION}"
+                    }
+                }
+            }
+        }
+
+        stage('Build Frontend Docker Image') {
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_HUB_USERNAME}/expense-tracker-frontend:${APP_VERSION} ./Frontend"
+                }
+            }
+        }
+
+        stage('Push Frontend Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', passwordVariable: 'DOCKER_HUB_PASSWORD', usernameVariable: 'DOCKER_HUB_USER')]) {
+                        sh "echo ${DOCKER_HUB_PASSWORD} | docker login -u ${DOCKER_HUB_USER} --password-stdin"
+                        sh "docker push ${DOCKER_HUB_USERNAME}/expense-tracker-frontend:${APP_VERSION}"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // Apply Backend Kubernetes Manifests
+                    sh "kubectl apply -f ./Backend/backend-deployment.yaml"
+                    sh "kubectl apply -f ./Backend/backend-service.yaml"
+                    echo "Backend deployed."
+
+                    // Apply Frontend Kubernetes Manifests
+                    sh "kubectl apply -f ./Frontend/frontend-deployment.yaml"
+                    sh "kubectl apply -f ./Frontend/frontend-service.yaml"
+                    echo "Frontend deployed."
+                }
+            }
+        }
+    }
+}
